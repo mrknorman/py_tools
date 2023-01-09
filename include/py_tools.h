@@ -11,7 +11,7 @@
 #include <math.h>
 
 #include <Python.h>
-#include "numpy/arrayobject.h"
+#include <numpy/arrayobject.h>
 
 #include "text.h"
 
@@ -619,7 +619,7 @@ int32_t plotFigure(
             error_code += runPythonFunc(
                 verbosity,
                 num_args,
-                "./include/py_functions", 
+                "./py_tools/include/py_tools", 
                 "plot_figure", 
                 args, 
                 &output_array, 
