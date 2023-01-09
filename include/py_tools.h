@@ -13,7 +13,16 @@
 #include <Python.h>
 #include "numpy/arrayobject.h"
 
-#include "text.h"
+#ifndef VERBOSITIES
+#define VERBOSITIES
+
+#define SILENT 0
+#define ERROR_ONLY 1
+#define ERROR_AND_WARNINGS_ONLY 2
+#define STANDARD 3
+#define EXTRA 4
+
+#endif
 
 #define INIT_PY(...) do { \
     if (!Py_IsInitialized()) { initPy(); }\
@@ -29,21 +38,46 @@
     return 1000; }\
     } while(0)
 
-bool initPy() {		
+bool initPy() {
+	
+	/**
+     * Runs Py_Initialize() from the C Python API in order to initialize the 
+	 * Python interpreter, and also adds current directory to the path. Run
+	 * before runing any other python functions. Can be found in INIT_PY macro.
+     * @param 
+     * @see deinitPy
+     * @return bool : returns true if initlization was succesfull.
+     */
     
+	// Initlize Python interpreter, because initsigs is 0, it skips 
+	// registration of signal handlers, which might be useful when Python is 
+	// embedded:
 	Py_InitializeEx(0);
+	
+	// Add current path to system path:
 	PyRun_SimpleString("import sys");
     PyRun_SimpleString("sys.path.append(\".\")");
-
+	
+	// Return true if Python is initilized:
 	return Py_IsInitialized();
 }
 
 void deinitPy() {
 	
-	// Deintilisation and reintilization causes segfault with some common python
-	// packages like NumPy.
-    
+	/**
+     * Runs Py_FinalizeEx() from the C Python API in order to deinitilize the 
+	 * Python interpreter. Currently unused as deintilisation and subsequent 
+	 * reintilization causes segfault with some common Python packages like 
+	 * NumPy.
+     * @param 
+     * @see initPy
+     * @return void
+     */
+	
+	// Dereference threadinf module:
     Py_DECREF(PyImport_ImportModule("threading"));
+	
+	// Exits Python interpreter:
     Py_FinalizeEx();
 }
 
@@ -51,46 +85,106 @@ PyObject *makePyArrayFloat(
     const float   *array, 
     const int32_t  num_elements
     ) {
-
+	
+	/**
+     * Converts C array of floats into NumPy PyArray using Numpy C API.
+     * @param 
+	 * const float   *array       : array to convert to numpy array.
+	 * const int32_t  num_elements: number of elements in the array to be
+	 *                              converted.
+     * @see makePyArrayShort, makePyArrayInt, makeStringList
+     * @return PyObject* : Newly created NumPy PyArray.
+     */
+	
+	// Import and initilise NumPy array module:
 	import_array();
+	
+	// Convert num_elements into Numpy int format;
 	npy_intp dims = (npy_intp) num_elements;
 	
-	return PyArray_SimpleNewFromData(1, &dims, NPY_FLOAT, (void *) array);	
+	// Returns newly created Numpy float array:
+	return PyArray_SimpleNewFromData(1, &dims, NPY_FLOAT, (void*)array);	
 }
 
 PyObject *makePyArrayShort(
     const uint16_t *array, 
     const int32_t   num_elements
     ) {
-
+	
+	/**
+     * Converts C array of unsigned 16 bit integers into NumPy PyArray using 
+	 * Numpy C API.
+     * @param 
+	 *     const uint16_t *array       : array to convert to numpy array.
+	 *     const int32_t   num_elements: number of elements in the array to be
+	 *                                   converted.
+     * @see makePyArrayFloat, makePyArrayInt, makeStringList
+     * @return PyObject* : Newly created NumPy PyArray.
+     */
+	
+	// Import and initilise NumPy array module:
 	import_array();
+	
+	// Convert num_elements into Numpy int format;
 	npy_intp dims = (npy_intp) num_elements;
 	
-	return PyArray_SimpleNewFromData(1, &dims, NPY_SHORT, (void *) array);	
+	// Returns newly created Numpy int array:
+	return PyArray_SimpleNewFromData(1, &dims, NPY_SHORT, (void*)array);	
 }
 
 PyObject *makePyArrayInt(
     const int32_t *array, 
     const int32_t  num_elements
     ) {
+	
+	/**
+     * Converts C array of 32 bit integers into NumPy PyArray using 
+	 * Numpy C API.
+     * @param 
+	 *     const int32_t *array       : array to convert to NumPy array.
+	 *     const int32_t  num_elements: number of elements in the array to be
+	 *                                  converted.
+     * @see makePyArrayShort, makePyArrayFloat, makeStringList
+     * @return PyObject* : Newly created NumPy PyArray.
+     */
 
+	// Import and initilise NumPy array module:
 	import_array();
+	
+	// Convert num_elements into NumpyInt format;
 	npy_intp dims = (npy_intp) num_elements;
 	
-	return PyArray_SimpleNewFromData(1, &dims, NPY_INT, (void *) array);	
+	// Returns newly created Numpy int array:
+	return PyArray_SimpleNewFromData(1, &dims, NPY_INT, (void*)array);	
 }
 
 PyObject *makeListString(
           char    **string, 
     const int32_t   num_elements
-    )  {
-
+    ) {
+	
+	/**
+     * Converts C array of strings into Python list of strings using Python C
+	 * API.
+     * @param
+	 *     const int32_t *array       : array to convert to Python list.
+	 *     const int32_t  num_elements: number of elements in the array to be
+	 *                              converted.
+     * @see makePyArrayShort, makePyArrayInt
+     * @return PyObject* : Newly created NumPy PyArray.
+     */
+	
+	// Create new Python list:
     PyObject* list = PyList_New(num_elements);
+	
+	// Loop over string array elements and assign each to list element after 
+	// converting to Python unicode format:
     for (int32_t index = 0; index < num_elements; index++) 
 	{
         PyList_SetItem(list, index, PyUnicode_FromString(string[index]));
     }
 	
+	// Return newly created Python list:
     return list;
 }
 
@@ -98,32 +192,77 @@ float *makeArr(
           PyObject *list, 
     const int32_t   num_elements
     ) {
+	
+	/**
+     * Converts Python list of floats into C array of floats using Python C
+	 * API.
+     * @param
+	 *     const PyObject *list       : Python list to convert to numpy list.
+	 *     const int32_t  num_elements: number of elements in the python list
+	 *                                  converted.
+     * @see
+     * @return float* : Newly created C array.
+     */
 
+	// Allocate C array to hold list values:
     float *array = malloc(sizeof(float)*(size_t)num_elements);
+	
+	// Loop over Python list elements, convert back to floats, and assign to 
+	// newly created array:
     for (int32_t index = 0; index < num_elements; index++) 
 	{
-        array[index] = (float) PyFloat_AsDouble(PyList_GetItem(list, index));
+        array[index] = (float)PyFloat_AsDouble(PyList_GetItem(list, index));
     }
 	
+	// Return newly created C array: 
     return array;
 }
 
 bool runPythonFunc(
 	const int32_t    verbosity,
     const int32_t    num_args, 
-    const char      *module_path_string, 
+    const char      *module_path, 
     const char      *function_name, 
           PyObject **args, 
           float    **output_array, 
-          int32_t    output_length
+          int32_t    num_output_elements
     ) {
+	
+	/**
+     * Runs Python function and returns output to C float array.
+     * @param
+	 *    const int32_t verbosity: 
+	 *	      Dictates the level of logs printed to the
+	 *        console. Can hold the following values, higher
+	 *        values are more verbose:
+	 *           * SILENT     = 0 : Nothing printed.
+	 *           * ERROR_ONLY = 1 : Only errors are printed.
+	 *           * ERROR_AND_WARNINGS_ONLY = 2: 
+	 *               Only errors and warnings are printed.
+	 *           * STANDARD   = 3 : All standard log messages are printed.
+	 *           * EXTRA     := 4 : More detailed log messages are printed.
+	 *    const int32_t num_args: 
+	 *        Number of arguments to requested Python function.
+	 *    const char *module_path: 
+	 *        Path to the Python file containing requested function.
+	 *    const char *function_name: Name of the requested function.
+	 *    PyObject **args: 
+	 *        Array of argyments to requested function.
+	 *    float **output_array: 
+	 *        Pointer to fill with output array from requested Python function.
+	 *    int32_t num_output_elements:
+     *        Num outputted function elements.
+	 * 
+     * @see
+     * @return float* : Newly created C array.
+     */
 	
 	int32_t error_code = 0;
 	
     PyObject *pModule, *pFunc;
     PyObject *pArgs, *pValue;
 	
-	path_s model_path = newPath(module_path_string);
+	path_s model_path = newPath(module_path);
 	
 	PyObject *sys_path = PySys_GetObject("path");
 	PyList_Append(sys_path, PyUnicode_FromString(model_path.directory));
@@ -145,11 +284,12 @@ bool runPythonFunc(
                     Py_DECREF(pArgs);
                     Py_DECREF(pModule);
 					
-					if (verbosity > 0)
+					if (verbosity > SILENT)
 					{
 						fprintf(
 							stderr, 
-							"runPythonFunc:\n Cannot convert argument: %i.\n", 
+							"runPythonFunc:\n Error! Cannot convert argument: "
+							"%i.\n", 
 							index
 						);
 					}
@@ -163,7 +303,7 @@ bool runPythonFunc(
 
             pValue = PyObject_CallObject(pFunc, pArgs);
 
-            *output_array = makeArr(pValue, output_length);
+            *output_array = makeArr(pValue, num_output_elements);
 
             Py_DECREF(pArgs);
             if (pValue != NULL)
@@ -176,9 +316,9 @@ bool runPythonFunc(
                 Py_DECREF(pModule);
                 PyErr_Print();
 				
-				if (verbosity > 0)
+				if (verbosity > SILENT)
 				{
-					fprintf(stderr,"runPythonFunc:\n Call failed.\n");
+					fprintf(stderr,"runPythonFunc:\n Error! Call failed.\n");
 				}
 				
                 error_code += 10;
@@ -193,7 +333,7 @@ bool runPythonFunc(
 				PyErr_Print();
 			}
 			
-			if (verbosity > 0)
+			if (verbosity > SILENT)
 			{
 				fprintf(
                     stderr, 
@@ -210,11 +350,11 @@ bool runPythonFunc(
 	{
         PyErr_Print();
 		
-		if (verbosity > 0)
+		if (verbosity > SILENT)
 		{
 			fprintf(
                 stderr, 
-                "runPythonFunc:\n Failed to load: \"%s\".\n", 
+                "runPythonFunc:\n Error! Failed to load: \"%s\".\n", 
                 model_path.base
             );
 		}
@@ -226,39 +366,7 @@ bool runPythonFunc(
     return error_code;
 }
 
-bool checkArrayLengthEquality(
-	const int32_t verbosity,
-    const int32_t length_1, 
-    const int32_t length_2
-    ) {
-	
-	bool result = false;
-	if (length_1 != length_2) 
-	{
-	
-		if (verbosity > 0)
-		{
-			fprintf(
-				stderr, 
-				"X array length (%i) must equal Y array length (%i)."
-				"Exiting.\n", 
-				length_1, 
-				length_2
-			); 		
-		}
-		
-		result = false;
-	} 
-	else 
-	{
-		result = true;
-	}
-	
-	return result;
-}
-
 //Python Plotting Functions:
-
 typedef struct Axis{
     char *name;
     char *label;
@@ -352,15 +460,19 @@ PyObject *convertSeriesToPyObject(
     PyObject *py_values = PyTuple_New(num_axis);
     for (int32_t index = 0; index < num_axis; index++)
     {
-        if ( PyTuple_SetItem(
+        if (( 
+		PyTuple_SetItem(
             py_values,
             index,
-            convertSeriesValuesToPyObject(values[index], num_elements)
-        ) != 0 ) {
+            convertSeriesValuesToPyObject(values[index], 
+			num_elements
+		)) != 0 ) 
+		&& (verbosity > SILENT)) {
+		
          fprintf(
                 stderr, 
                 "convertSeriesToPyObject: \n"
-                "Warning cannot set tuple item values %s.",
+                "Error! cannot set tuple item values %s.",
                 values[index].axis_name
             );
         }
@@ -370,12 +482,12 @@ PyObject *convertSeriesToPyObject(
     const char *template = "ssO";
     
     PyObject *tuple = Py_BuildValue(template, label, axes_name, py_values);
-    if ((tuple == NULL) && (verbosity > 0))
+    if ((tuple == NULL) && (verbosity > SILENT))
     {
         fprintf(
             stderr, 
             "ConvertFigureToPyObject:\n"
-            "Warning! Cannot build value.\n"
+            "Error! Cannot build value.\n"
         );
     }
     
@@ -408,12 +520,12 @@ PyObject *convertFigureToPyObject(
             convertAxesToPyObject(axes[index])
             ) != 0
         ) {
-            if (verbosity > 0)
+            if (verbosity > SILENT)
             {
                 fprintf(
                     stderr, 
-                    "ConvertFigureToPyObject: \n"
-                    "Warning cannot set tuple item axis %s.",
+                    "ConvertFigureToPyObject:\n"
+                    "Error! Cannot set tuple item axis %s.",
                     axes[index].name
                 );
                 
@@ -434,12 +546,12 @@ PyObject *convertFigureToPyObject(
             convertSeriesToPyObject(verbosity, series[index])
             ) != 0
         ) {
-            if (verbosity > 0)
+            if (verbosity > SILENT)
             {
                 fprintf(
                     stderr, 
-                    "ConvertFigureToPyObject: \n"
-                    "Warning cannot set tuple item series %s.",
+                    "ConvertFigureToPyObject:\n"
+                    "Error! Cannot set tuple item series %s.\n",
                     series[index].label
                 );
                 
@@ -448,28 +560,34 @@ PyObject *convertFigureToPyObject(
         }
     }
     
-    if (py_series == NULL) 
+    if ((py_series == NULL) && (verbosity > SILENT))
     {
-        fprintf(stderr, "Warning! Py series is NULL! \n");
+		fprintf(
+			stderr, 
+			"ConvertFigureToPyObject:\n"
+			"Error! Py series is NULL!\n"
+		);
     }
-    else if (py_axes == NULL) 
+    else if ((py_axes == NULL) && (verbosity > SILENT))
     {
-        fprintf(stderr, "Warning! Py axes is NULL! \n");
+        fprintf(
+			stderr, 
+			"Error! Py axes is NULL!\n"
+		);
     }
     
     PyObject *tuple = Py_BuildValue("OO", py_axes, py_series);
     
-    if ((tuple == NULL) && (verbosity > 0))
+    if ((tuple == NULL) && (verbosity > SILENT))
     {
         fprintf(
             stderr, 
             "ConvertFigureToPyObject:\n"
-            "Warning! Cannot build value.\n"
+            "Error! Cannot build value!\n"
         );
     }
     
     return tuple;
-    
 }
 
 int32_t plotFigure(
@@ -487,7 +605,7 @@ int32_t plotFigure(
             {
             float  *output_array = NULL;
 
-            const int32_t output_length = 1;
+            const int32_t num_output_elements = 1;
             const int32_t num_args      = 3;
             PyObject *args[] = {
                 PyLong_FromLong((long)verbosity),
@@ -503,7 +621,7 @@ int32_t plotFigure(
                 "plot_figure", 
                 args, 
                 &output_array, 
-                output_length
+                num_output_elements
             );
         }
         else
