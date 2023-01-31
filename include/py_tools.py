@@ -3,12 +3,12 @@ with warnings.catch_warnings():
     warnings.filterwarnings(
         "ignore",
         r"The value of the smallest subnormal for <class \'numpy.float32\'\> "
-		"type is zero."
+        "type is zero."
     )
     warnings.filterwarnings(
         "ignore",
         r"The value of the smallest subnormal for <class \'numpy.float64\'\> "
-		"type is zero."
+        "type is zero."
     )
     
     from dataclasses import dataclass
@@ -18,6 +18,7 @@ with warnings.catch_warnings():
     matplotlib.use("Agg")
     
     import bokeh.plotting as bk
+    import bokeh.palettes  as palettes
     
     import matplotlib.pyplot as plt
 
@@ -126,8 +127,10 @@ def plot_figure(verbosity: int, input_args: tuple, output_file_name: str):
             x_axis_label = graph.axis[0].label, 
             y_axis_label = graph.axis[1].label
         )
+        
+    pallet = palettes.Colorblind[8]
     
-    for series in figure.series:
+    for series, color in zip(figure.series, pallet):
         axes_name = series.axes_name
         graph = graphs[axes_name]
                 
@@ -144,12 +147,13 @@ def plot_figure(verbosity: int, input_args: tuple, output_file_name: str):
         
         graph.line(
             values[0],
-            values[1]
+            values[1],
+            line_color = color, 
+            legend_label = series.label
         )
     
     plot = bk.gridplot([graphs.values(), [None]])
     bk.save(plot)
-
 
 @add_error_except
 def plot_line_graph(x_array, y_array, x_label, y_label, file_name):
