@@ -619,7 +619,7 @@ int32_t plotFigure(
             error_code += runPythonFunc(
                 verbosity,
                 num_args,
-                "./py_tools/include/py_tools", 
+                "./py_tools/include/py_tools/py_tools", 
                 "plot_figure", 
                 args, 
                 &output_array, 
