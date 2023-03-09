@@ -13,7 +13,7 @@
 #include <Python.h>
 #include <numpy/arrayobject.h>
 
-#include "text.h"
+#include "io_tools/text.h"
 
 #ifndef VERBOSITIES
 #define VERBOSITIES
